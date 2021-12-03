@@ -37,6 +37,10 @@ jobs:
       # Nimskull commit to test the containers with
       nimskull_test_commit: 85f6cacd4ca0e6a3f3464c21e15c0ad98979b731
 
+    # Grant write permissions to packages
+    permissions:
+      packages: write
+
     steps:
       - name: Checkout
         uses: actions/checkout@v2
