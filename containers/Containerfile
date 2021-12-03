@@ -5,15 +5,15 @@
 
 # --- Image used for building the compiler
 
-# The name of the Ubuntu release being used.
+# The name of the Debian release being used.
 #
 # This image tracks LTS releases.
-ARG ubuntu_release=focal
+ARG debian_release=buster
 
-FROM docker.io/ubuntu:$ubuntu_release as builder
+FROM docker.io/debian:$debian_release-slim as builder
 
 # Respecified here so that the variable can be used by this image
-ARG ubuntu_release
+ARG debian_release
 
 # Add the NodeSource keyring to APT
 ADD --chmod=644 https://deb.nodesource.com/gpgkey/nodesource.gpg.key /etc/apt/trusted.gpg.d/nodesource.asc
@@ -24,7 +24,7 @@ RUN apt-get update \
          --no-install-recommends \
          ca-certificates \
     # Add the NodeSource sources to APT
-    && echo "deb [signed-by=/etc/apt/trusted.gpg.d/nodesource.asc] https://deb.nodesource.com/node_16.x $ubuntu_release main" > /etc/apt/sources.list.d/nodesource.list \
+    && echo "deb [signed-by=/etc/apt/trusted.gpg.d/nodesource.asc] https://deb.nodesource.com/node_16.x $debian_release main" > /etc/apt/sources.list.d/nodesource.list \
     # Update APT then install compiler build dependencies
     && apt-get update \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y \
@@ -52,15 +52,11 @@ FROM builder as tester
 RUN apt-get update \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y \
       --no-install-recommends \
-      # Required for running JS tests
-      nodejs \
       # Required by Boehm GC tests
       libgc-dev \
       # Required for ARC/ORC memory leak tests
       libc6-dbg \
       valgrind \
-      # Required for ttimes.nim
-      tzdata \
       # Required for tgetprotobyname.nim
       netbase \
     # Remove APT lists after we are done
