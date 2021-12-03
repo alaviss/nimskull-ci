@@ -101,6 +101,7 @@ jobs:
           context: ./containers
           file: ./containers/Containerfile
           platforms: ${{ env.targets }}
+          push: true
           tags: ${{ steps.tester_meta.outputs.tags }}
           labels: ${{ steps.tester_meta.outputs.labels }}
           target: tester
@@ -112,6 +113,7 @@ jobs:
           context: ./containers
           file: ./containers/Containerfile
           platforms: ${{ env.targets }}
+          push: true
           tags: ${{ steps.builder_meta.outputs.tags }}
           labels: ${{ steps.builder_meta.outputs.labels }}
           target: builder
