@@ -3,14 +3,14 @@
 # This file is licensed under the terms of the MIT license. See "license.txt"
 # included in this distribution for more information.
 
-# --- Base image to build other images on
+# --- Image used for building the compiler
 
 # The name of the Ubuntu release being used.
 #
 # This image tracks LTS releases.
 ARG ubuntu_release=focal
 
-FROM docker.io/ubuntu:$ubuntu_release as base
+FROM docker.io/ubuntu:$ubuntu_release as builder
 
 # Respecified here so that the variable can be used by this image
 ARG ubuntu_release
@@ -41,21 +41,16 @@ RUN apt-get update \
          # Required for running build script
          python3 \
          # Required for building docs
-         nodejs
-
-# --- Image used for building the compiler
-
-FROM base as builder
-
-# Remove the APT lists
-RUN rm -rf /var/lib/apt/lists/*
+         nodejs \
+    && rm -rf /var/lib/apt/lists/*
 
 # --- Image used for testing the compiler
 
-FROM base as tester
+FROM builder as tester
 
 # Install additional dependencies for compiler tests
-RUN DEBIAN_FRONTEND=noninteractive apt-get install -y \
+RUN apt-get update \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -y \
       --no-install-recommends \
       # Required for running JS tests
       nodejs \
