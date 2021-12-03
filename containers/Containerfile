@@ -42,6 +42,10 @@ RUN apt-get update \
          python3 \
          # Required for building docs
          nodejs \
+         # Required for sharing artifacts in CI
+         curl \
+         # Required to build archives
+         zstd \
     && rm -rf /var/lib/apt/lists/*
 
 # --- Image used for testing the compiler
