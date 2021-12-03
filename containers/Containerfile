@@ -1,0 +1,65 @@
+# Copyright (c) 2021 Leorize <leorize+oss@disroot.org>
+#
+# This file is licensed under the terms of the MIT license. See "license.txt"
+# included in this distribution for more information.
+
+# --- Base image to build other images on
+
+# The name of the Ubuntu release being used.
+#
+# This image tracks LTS releases.
+ARG ubuntu_release=focal
+
+FROM docker.io/ubuntu:$ubuntu_release as base
+
+RUN apt-get update \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -y \
+         --no-install-recommends \
+         # Required for building the compiler
+         gcc \
+         g++ \
+         # Required for building C stuff
+         libc-dev \
+         # Required for building csources
+         make \
+         # Required for retrieving source information
+         ca-certificates \
+         git \
+         # Required for running build script
+         python3
+
+# --- Image used for building the compiler
+
+FROM base as builder
+
+# Remove the APT lists
+RUN rm -rf /var/lib/apt/lists/*
+
+# --- Image used for testing the compiler
+
+FROM base as tester
+
+# Respecified here so that the variable can be used by this image
+ARG ubuntu_release
+
+# Add the NodeSource keyring to APT
+ADD --chmod=644 https://deb.nodesource.com/gpgkey/nodesource.gpg.key /etc/apt/trusted.gpg.d/nodesource.asc
+
+# Add NodeSource repository (for node.js) and install additional dependencies
+RUN echo "deb [signed-by=/etc/apt/trusted.gpg.d/nodesource.asc] https://deb.nodesource.com/node_16.x $ubuntu_release main" | tee /etc/apt/sources.list.d/nodesource.list \
+    && apt-get update \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -y \
+         --no-install-recommends \
+         # Required for running JS tests
+         nodejs \
+         # Required by Boehm GC tests
+         libgc-dev \
+         # Required for ARC/ORC memory leak tests
+         libc6-dbg \
+         valgrind \
+         # Required for ttimes.nim
+         tzdata \
+         # Required for tgetprotobyname.nim
+         netbase \
+    # Remove APT lists after we are done
+    && rm -rf /var/lib/apt/lists/*

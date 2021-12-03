@@ -1,0 +1,106 @@
+name: Build container images
+
+on:
+  push:
+    branches:
+      - master
+
+  pull_request:
+    branches:
+      - master
+
+  # Update the image every month
+  schedule:
+    - cron: '0 0 1 * *'
+
+jobs:
+  build:
+    name: Build, test and push
+    runs-on: ubuntu-latest
+    env:
+      builder_img: ghcr.io/${{ github.repository_owner }}/nimskull-builder
+      builder_test_tag: ${{ env.builder_img }}:test
+      tester_img: ghcr.io/${{ github.repository_owner }}/nimskull-tester
+      tester_test_tag: ${{ env.tester_img }}:test
+
+      # List of Docker platforms to build images for
+      targets: linux/amd64,linux/arm64,linux/arm/v7
+
+      # Nimskull commit to test the containers with
+      nimskull_test_commit: 85f6cacd4ca0e6a3f3464c21e15c0ad98979b731
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Generate metadata for the builder image
+        id: builder_meta
+        uses: docker/metadata-action@v3.6.1
+        with:
+          images: |
+            ${{ env.builder_img }}
+
+      - name: Generate metadata for the tester image
+        id: tester_meta
+        uses: docker/metadata-action@v3.6.1
+        with:
+          images: |
+            ${{ env.tester_img }}
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v1.2.0
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1.6.0
+
+      - name: Build and load tester image
+        uses: docker/build-push-action@v2.7.0
+        with:
+          context: ./containers
+          file: ./containers/Containerfile
+          platforms: ${{ env.targets }}
+          load: true
+          tags: ${{ env.tester_test_tag }}
+          target: tester
+
+      - name: Build and load builder image
+        uses: docker/build-push-action@v2
+        with:
+          context: ./containers
+          file: ./containers/Containerfile
+          platforms: ${{ env.targets }}
+          load: true
+          tags: ${{ env.builder_test_tag }}
+          target: builder
+
+      # TODO: Test the image on nimskull
+
+      - name: Login to Github registry
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v1
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.CR_PAT }}
+
+      - name: Push tester image
+        if: github.event_name != 'pull_request'
+        uses: docker/build-push-action@v2.7.0
+        with:
+          context: ./containers
+          file: ./containers/Containerfile
+          platforms: ${{ env.targets }}
+          tags: ${{ steps.tester_meta.outputs.tags }}
+          labels: ${{ steps.tester_meta.outputs.labels }}
+          target: tester
+
+      - name: Push builder image
+        if: github.event_name != 'pull_request'
+        uses: docker/build-push-action@v2.7.0
+        with:
+          context: ./containers
+          file: ./containers/Containerfile
+          platforms: ${{ env.targets }}
+          tags: ${{ steps.builder_meta.outputs.tags }}
+          labels: ${{ steps.builder_meta.outputs.labels }}
+          target: builder
