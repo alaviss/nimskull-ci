@@ -47,14 +47,14 @@ jobs:
 
       - name: Generate metadata for the builder image
         id: builder_meta
-        uses: docker/metadata-action@v3.6.1
+        uses: docker/metadata-action@v3.6.2
         with:
           images: |
             ${{ env.builder_img }}
 
       - name: Generate metadata for the tester image
         id: tester_meta
-        uses: docker/metadata-action@v3.6.1
+        uses: docker/metadata-action@v3.6.2
         with:
           images: |
             ${{ env.tester_img }}
