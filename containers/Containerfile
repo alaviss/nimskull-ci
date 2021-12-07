@@ -3,30 +3,86 @@
 # This file is licensed under the terms of the MIT license. See "license.txt"
 # included in this distribution for more information.
 
-# --- Image used for building the compiler
-
 # The name of the Debian release being used.
 #
-# This image tracks LTS releases.
+# These images tracks LTS releases.
 ARG debian_release=buster
 
-FROM docker.io/debian:$debian_release-slim as builder
+# Update this monthly
+#
+# If you alter this line formatting or move it away from the top, update
+# check-node-updates.sh to do update checking/fixing properly.
+ARG node_version=16.13.1
 
-# Respecified here so that the variable can be used by this image
-ARG debian_release
+# --- Builder image to download NodeJS for other images
 
-# Add the NodeSource keyring to APT
-ADD --chmod=644 https://deb.nodesource.com/gpgkey/nodesource.gpg.key /etc/apt/trusted.gpg.d/nodesource.asc
+# This image tracks testing since it works better for ARMv7
+FROM docker.io/debian:testing-slim as node-downloader
 
-# Install ca-certificates in order to download from NodeSource.
+# Inherit this from global environment
+ARG node_version
+
+# Update APT and install tools to download nodejs
 RUN apt-get update \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y \
          --no-install-recommends \
+         curl \
          ca-certificates \
-    # Add the NodeSource sources to APT
-    && echo "deb [signed-by=/etc/apt/trusted.gpg.d/nodesource.asc] https://deb.nodesource.com/node_16.x $debian_release main" > /etc/apt/sources.list.d/nodesource.list \
-    # Update APT then install compiler build dependencies
-    && apt-get update \
+         gnupg \
+         xz-utils \
+    && rm -rf /var/lib/apt/lists/*
+
+# Download and extract nodejs
+RUN set -eux \
+    && dpkg_arch=$(dpkg --print-architecture) \
+    && node_arch= \
+    && case "$dpkg_arch" in \
+       amd64) node_arch="x64";; \
+       arm64) node_arch="arm64";; \
+       armhf) node_arch="armv7l";; \
+       *) echo "Error: unsupported nodejs architecture"; exit 1;; \
+       esac \
+    # Import trusted release keys
+    # https://github.com/nodejs/node#release-keys
+    && gpg --keyserver keyserver.ubuntu.com \
+         --keyserver keys.openpgp.org \
+         --recv-keys \
+         4ED778F539E3634C779C87C6D7062848A1AB005C \
+         94AE36675C464D64BAFA68DD7434390BDBE9B9C5 \
+         74F12602B6F1C4E913FAA37AD3A89613643B6201 \
+         71DCFD284A79C3B38668286BC97EC7A07EDE3FC1 \
+         8FCCA13FEF1D0C2E91008E09770F7A9A5AE15600 \
+         C4F0DFFF4E8C1A8236409D08E73BC641CC11F4C8 \
+         C82FA3AE1CBEDC6BE46B9360C43CEC45C17AB93C \
+         DD8F2338BAE7501E3DD5AC78C273792F7D83545D \
+         A48C2BEE680E841632CD4E44F07496B3EB3C1762 \
+         108F52B48DB57BB0CC439B2997B01419BD92F80A \
+         B9E2F5981AA6E0CD28160D9FF13993A75599653C \
+    # Download the tarball
+    && release_name=node-v${node_version}-linux-${node_arch} \
+    && tarball_name=${release_name}.tar.xz \
+    && curl -LO "https://nodejs.org/dist/v${node_version}/${tarball_name}" \
+    # Download the checksums
+    && curl -LO "https://nodejs.org/dist/v${node_version}/SHASUMS256.txt.asc" \
+    # Verify the signatures
+    && gpg -o SHASUMS256.txt --decrypt SHASUMS256.txt.asc \
+    # Verify the checksums
+    #
+    # It would be better if we have pipefail here, but sha256sum knows to bail
+    # when there is an empty input, so all is well.
+    && grep -F "${tarball_name}" SHASUMS256.txt | sha256sum -c - \
+    # Extract the tarball
+    && mkdir -p "/node-${node_version}" \
+    && tar -C "/node-${node_version}" --strip-components=1 -xf "${tarball_name}" \
+    # Remove artifacts to save space (even though this is just a builder image)
+    && rm SHASUMS256.txt* "$tarball_name"
+
+# --- Image used for building the compiler
+
+FROM docker.io/debian:${debian_release}-slim as builder
+
+# Update APT then install compiler build dependencies
+RUN apt-get update \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y \
          --no-install-recommends \
          # Required for building the compiler
@@ -40,13 +96,21 @@ RUN apt-get update \
          git \
          # Required for running build script
          python3 \
-         # Required for building docs
-         nodejs \
          # Required for sharing artifacts in CI
+         ca-certificates \
          curl \
          # Required to build archives
          zstd \
     && rm -rf /var/lib/apt/lists/*
+
+# Inherit the variable to this image
+ARG node_version
+
+# Install NodeJS
+COPY --from=node-downloader /node-${node_version} /opt/node-${node_version}
+
+# Add Node to PATH
+ENV PATH="/opt/node-${node_version}/bin:${PATH}"
 
 # --- Image used for testing the compiler
 

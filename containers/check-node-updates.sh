@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+
+# Set safety bash features
+set -eu -o pipefail
+
+scriptDir=$(dirname "$(realpath "${BASH_SOURCE[0]}")")
+
+# Grab the containers NodeJS version
+containerVer=$(grep -m 1 -F "node_version=" "$scriptDir/Containerfile" | cut -d'=' -f 2)
+
+echo "Containers version: $containerVer"
+
+# Look for the latest LTS in NodeJS index
+latestLts=$(curl -sL https://nodejs.org/dist/index.json | jq -r 'first(.[] | select(.lts != false) | .version | ltrimstr("v"))')
+
+echo "Latest LTS version: $latestLts"
+
+if [[ $latestLts == "$containerVer" ]]; then
+  echo "Containers' NodeJS is up-to-date"
+else
+  echo "Containers' NodeJS is outdated, performing update"
+  temporary=$(mktemp "$scriptDir/Containerfile.tmp.XXXXXXXXXX")
+  # Write the update to a temporary
+  #
+  # This sed script captures everything up to `node_version=`, then change the
+  # portion after the `=` to the latest version
+  sed 's/\(.*node_version=\).*/\1'"$latestLts"'/' "$scriptDir/Containerfile" > "$temporary"
+  # Show the diff
+  diff -u "$scriptDir/Containerfile" "$temporary" || {
+    # Diff returns either 1 or 0 on success, so exit failure otherwise
+    if [[ $? -ne 1 && $? -ne 0 ]]; then
+      exit "$?"
+    fi
+  }
+  # Then replace the original file
+  mv -v "$temporary" "$scriptDir/Containerfile"
+fi
