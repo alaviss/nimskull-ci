@@ -9,10 +9,6 @@ on:
     branches:
       - main
 
-  # Update the image every month
-  schedule:
-    - cron: '0 0 1 * *'
-
 jobs:
   build:
     name: Build, test and push
@@ -51,6 +47,10 @@ jobs:
         with:
           images: |
             ${{ env.builder_img }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=ref,event=branch
+            type=ref,event=pr
 
       - name: Generate metadata for the tester image
         id: tester_meta
@@ -58,6 +58,10 @@ jobs:
         with:
           images: |
             ${{ env.tester_img }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=ref,event=branch
+            type=ref,event=pr
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v1.2.0
@@ -77,6 +81,8 @@ jobs:
           push: true
           tags: ${{ env.tester_test_tag }}
           target: tester
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: Build and load builder image
         uses: docker/build-push-action@v2
@@ -87,6 +93,8 @@ jobs:
           push: true
           tags: ${{ env.builder_test_tag }}
           target: builder
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       # TODO: Test the image on nimskull
 
@@ -109,6 +117,8 @@ jobs:
           tags: ${{ steps.tester_meta.outputs.tags }}
           labels: ${{ steps.tester_meta.outputs.labels }}
           target: tester
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: Push builder image
         if: github.event_name != 'pull_request'
@@ -121,3 +131,5 @@ jobs:
           tags: ${{ steps.builder_meta.outputs.tags }}
           labels: ${{ steps.builder_meta.outputs.labels }}
           target: builder
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
