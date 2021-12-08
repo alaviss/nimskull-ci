@@ -1,0 +1,39 @@
+name: Update containers dependencies
+
+on:
+  # Run on push and PR too
+  push: {}
+  pull_request: {}
+
+  schedule:
+    # Run the check monthly
+    - cron: '0 0 1 * *'
+
+jobs:
+  nodejs:
+    name: Update NodeJS version
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Run updater
+        # This step will emit a version number if an update is found
+        id: updater
+        run: ./containers/check-node-updates.sh
+
+      - name: Create PR if needed (only on scheduled runs)
+        if: github.event == 'schedule'
+        uses: peter-evans/create-pull-request@v3.11.0
+        with:
+          commit-message: |
+            containers: update NodeJS to ${{ steps.updater.outputs.updated-to }}
+          delete-branch: true
+          title: |
+            containers: update NodeJS to ${{ steps.updater.outputs.updated-to }}
+          body: ''
