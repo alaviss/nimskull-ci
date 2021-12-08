@@ -34,4 +34,9 @@ else
   }
   # Then replace the original file
   mv -v "$temporary" "$scriptDir/Dockerfile"
+
+  # Integration with CI by emitting the target version
+  if [[ -v GITHUB_ACTIONS ]]; then
+    echo "::set-output name=updated-to::$latestLts"
+  fi
 fi
