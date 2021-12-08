@@ -3,11 +3,6 @@
 # This file is licensed under the terms of the MIT license. See "license.txt"
 # included in this distribution for more information.
 
-# The name of the Debian release being used.
-#
-# These images tracks LTS releases.
-ARG debian_release=buster
-
 # Update this monthly
 #
 # If you alter this line formatting or move it away from the top, update
@@ -79,7 +74,22 @@ RUN set -eux \
 
 # --- Image used for building the compiler
 
-FROM docker.io/debian:${debian_release}-slim as builder
+FROM docker.io/debian:buster-20211201-slim as builder
+
+# Switch to snapshot repositories to ensure that the image is reproducible
+#
+# These repositories are kept as comments in /etc/apt/sources.list, of which we
+# use sed to switch to them
+RUN sed \
+      # Delete all repository lines
+      -e '/^deb /d' \
+      # Uncomment the snapshot lines
+      -e 's/^# \(deb.*\)/\1/g' \
+      # Do this inline, saving the old file as .non-snapshot
+      -i.non-snapshot \
+      /etc/apt/sources.list \
+    # Since we switch to snapshot, Check-Valid-Until has to be disabled
+    && echo 'Acquire::Check-Valid-Until "false";' > /etc/apt/apt.conf.d/container-snapshot
 
 # Update APT then install compiler build dependencies
 RUN apt-get update \
