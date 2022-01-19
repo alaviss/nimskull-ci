@@ -75,7 +75,7 @@ jobs:
           driver-opts: network=host
 
       - name: Build and load tester image
-        uses: docker/build-push-action@v2.7.0
+        uses: docker/build-push-action@v2.8.0
         with:
           context: ./containers
           platforms: ${{ env.targets }}
@@ -86,7 +86,7 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Build and load builder image
-        uses: docker/build-push-action@v2
+        uses: docker/build-push-action@v2.8.0
         with:
           context: ./containers
           platforms: ${{ env.targets }}
@@ -108,7 +108,7 @@ jobs:
 
       - name: Push tester image
         if: github.event_name != 'pull_request'
-        uses: docker/build-push-action@v2.7.0
+        uses: docker/build-push-action@v2.8.0
         with:
           context: ./containers
           platforms: ${{ env.targets }}
@@ -121,7 +121,7 @@ jobs:
 
       - name: Push builder image
         if: github.event_name != 'pull_request'
-        uses: docker/build-push-action@v2.7.0
+        uses: docker/build-push-action@v2.8.0
         with:
           context: ./containers
           platforms: ${{ env.targets }}
