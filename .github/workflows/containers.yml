@@ -33,7 +33,7 @@ jobs:
       targets: linux/amd64,linux/arm64,linux/arm/v7
 
       # Nimskull commit to test the containers with
-      nimskull_test_commit: 85f6cacd4ca0e6a3f3464c21e15c0ad98979b731
+      nimskull_test_commit: c46848397e1f7b9d38c1bf5b18a0de4b5b898137
 
     # Grant write permissions to packages
     permissions:
@@ -96,7 +96,27 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      # TODO: Test the image on nimskull
+      - name: Checkout nimskull
+        uses: actions/checkout@v2
+        with:
+          repository: nim-works/nimskull
+          ref: ${{ env.nimskull_test_commit }}
+          path: nimskull
+
+      - name: Run build test
+        run: |
+          docker run -v "$PWD/nimskull:/src" -w /src --rm \
+            ${{ env.builder_test_tag }} \
+            ./koch.py unixrelease
+          docker run -v "$PWD/nimskull:/src" -w /src --rm \
+            ${{ env.builder_test_tag }} \
+            ./koch.py docs
+
+      - name: Run compiler tests
+        run: |
+          docker run -v "$PWD/nimskull:/src" -w /src --rm \
+            ${{ env.tester_test_tag }} \
+            ./koch.py tests
 
       - name: Login to Github registry
         if: github.event_name != 'pull_request'
