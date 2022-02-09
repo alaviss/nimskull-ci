@@ -28,7 +28,7 @@ jobs:
         run: ./containers/check-node-updates.sh
 
       - name: Create PR if needed (only on scheduled runs)
-        if: github.event == 'schedule'
+        if: github.event_name == 'schedule' || (github.event_name == 'push' && github.ref_name == 'main')
         uses: peter-evans/create-pull-request@v3.12.1
         with:
           commit-message: |
