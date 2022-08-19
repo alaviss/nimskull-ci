@@ -7,7 +7,7 @@
 #
 # If you alter this line formatting or move it away from the top, update
 # check-node-updates.sh to do update checking/fixing properly.
-ARG node_version=16.16.0
+ARG node_version=16.17.0
 
 # --- Builder image to download NodeJS for other images
 
