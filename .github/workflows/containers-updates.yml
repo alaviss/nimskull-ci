@@ -28,7 +28,7 @@ jobs:
         run: ./containers/check-node-updates.sh
         
       - name: Generate app token to create PR
-        uses: tibdex/github-app-token@v1.7.0
+        uses: tibdex/github-app-token@v1.8.0
         if: github.event_name == 'schedule' || (github.event_name == 'push' && github.ref_name == 'main')
         id: generate-token
         with:
