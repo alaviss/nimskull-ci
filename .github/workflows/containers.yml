@@ -97,7 +97,7 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Checkout nimskull
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           repository: nim-works/nimskull
           ref: ${{ env.nimskull_test_commit }}
