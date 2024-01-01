@@ -74,7 +74,7 @@ RUN set -eux \
 
 # --- Image used for building the compiler
 
-FROM docker.io/debian:buster-20230109-slim as builder
+FROM docker.io/debian:buster-20231218-slim as builder
 
 # Switch to snapshot repositories to ensure that the image is reproducible
 #
